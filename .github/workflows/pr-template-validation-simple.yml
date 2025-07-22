@@ -1,0 +1,153 @@
+name: Validação de Template de PR (Simplificada)
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+  workflow_dispatch:
+
+permissions:
+  pull-requests: read
+  contents: read
+
+jobs:
+  validate-pr-template:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate PR Template
+        id: validate-template
+        run: |
+          PR_BODY="${{ github.event.pull_request.body }}"
+          
+          echo "=== VALIDAÇÃO DO TEMPLATE ==="
+          echo "Tamanho do corpo: ${#PR_BODY} caracteres"
+          
+          # Verificar se o corpo não está vazio
+          if [ -z "$PR_BODY" ]; then
+            echo "❌ Corpo do PR está vazio"
+            exit 1
+          fi
+          
+          # Detectar tipo de template
+          if echo "$PR_BODY" | grep -q ":clipboard: Título da demanda" && echo "$PR_BODY" | grep -q ":rocket: Visão Geral"; then
+            TEMPLATE_TYPE="feature"
+            echo "📋 Template detectado: feature"
+          elif echo "$PR_BODY" | grep -q ":beetle: Título da demanda" && echo "$PR_BODY" | grep -q ":fire: Resumo do incidente"; then
+            TEMPLATE_TYPE="bug"
+            echo "📋 Template detectado: bug"
+          else
+            echo "❌ Template não reconhecido"
+            echo "Conteúdo encontrado:"
+            echo "$PR_BODY" | head -c 500
+            exit 1
+          fi
+          
+          # Verificar valores padrão
+          if echo "$PR_BODY" | grep -i -q "lorem ipsum"; then
+            echo "❌ Encontrado 'lorem ipsum' no corpo"
+            exit 1
+          fi
+          
+          if echo "$PR_BODY" | grep -q "MK-XXXX"; then
+            echo "❌ Encontrado 'MK-XXXX' no corpo"
+            exit 1
+          fi
+          
+          if echo "$PR_BODY" | grep -q "MK-0000"; then
+            echo "❌ Encontrado 'MK-0000' no corpo"
+            exit 1
+          fi
+          
+          # Verificar campos obrigatórios por tipo
+          if [ "$TEMPLATE_TYPE" = "feature" ]; then
+            REQUIRED_FIELDS=(
+              ":clipboard: Título da demanda"
+              ":zombie: Devs:"
+              ":label: Link da demanda:"
+              ":rocket: Visão Geral"
+              ":sparkles: Mudanças Implementadas"
+              ":mechanic: Evidências de testes local:"
+            )
+          else
+            REQUIRED_FIELDS=(
+              ":beetle: Título da demanda"
+              ":zombie: Devs:"
+              ":label: Link da demanda:"
+              ":fire: Resumo do incidente:"
+              ":hammer_and_wrench: Causa Raiz:"
+              ":wrench: Correção Realizada:"
+              ":mechanic: Evidências de testes local:"
+            )
+          fi
+          
+          # Verificar se todos os campos obrigatórios estão presentes
+          for field in "${REQUIRED_FIELDS[@]}"; do
+            if ! echo "$PR_BODY" | grep -q "$field"; then
+              echo "❌ Campo obrigatório ausente: $field"
+              exit 1
+            fi
+          done
+          
+          echo "✅ Template validado com sucesso!"
+          echo "✅ Todos os campos obrigatórios estão preenchidos"
+          echo "✅ Nenhum valor padrão foi encontrado"
+
+      - name: Comment on PR
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## ❌ Validação do Template Falhou
+            
+            O template do seu PR não passou na validação. Por favor, verifique:
+            
+            ### 🔍 Problemas encontrados:
+            - Certifique-se de que todos os campos obrigatórios estão preenchidos
+            - Remova todos os valores padrão (lorem ipsum, MK-XXXX, etc.)
+            - Preencha com informações reais sobre sua mudança
+            
+            ### 📋 Campos obrigatórios:
+            **Para Features:**
+            - Título da demanda
+            - Devs responsáveis
+            - Link da demanda
+            - Visão Geral
+            - Mudanças Implementadas
+            - Evidências de testes local
+            
+            **Para Bugs:**
+            - Título da demanda
+            - Devs responsáveis
+            - Link da demanda
+            - Resumo do incidente
+            - Causa Raiz
+            - Correção Realizada
+            - Evidências de testes local
+            
+            ### ℹ️ Campos opcionais:
+            - Observações
+            - Demandas relacionadas
+            
+            ### 💡 Dica:
+            Use um dos templates disponíveis em .github/pull_request_templates/ e preencha com informações reais!`
+            })
+
+      - name: Success Comment
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## ✅ Template Validado com Sucesso!
+            
+            Seu PR passou na validação do template! Todos os campos obrigatórios estão preenchidos corretamente. 🎉`
+            }) 

@@ -5,6 +5,10 @@ on:
     types: [opened, edited, synchronize]
   workflow_dispatch:
 
+permissions:
+  pull-requests: read
+  contents: read
+
 jobs:
   validate-pr-template:
     runs-on: ubuntu-latest
@@ -17,6 +21,14 @@ jobs:
         with:
           node-version: '18'
 
+      - name: Debug PR Body
+        run: |
+          echo "=== DEBUG: Corpo do PR ==="
+          PR_BODY="${{ github.event.pull_request.body }}"
+          echo "$PR_BODY"
+          echo "=== FIM DEBUG ==="
+          echo "Tamanho do corpo: ${#PR_BODY}"
+
       - name: Validate PR Template
         id: validate-template
         run: |
@@ -27,7 +39,11 @@ jobs:
           // Obter o corpo do PR
           const prBody = process.env.PR_BODY || '';
           
-          if (!prBody) {
+          console.log('=== INÍCIO DA VALIDAÇÃO ===');
+          console.log('Tamanho do corpo do PR:', prBody.length);
+          console.log('Primeiros 200 caracteres:', prBody.substring(0, 200));
+          
+          if (!prBody || prBody.trim() === '') {
             console.log('❌ Corpo do PR está vazio');
             process.exit(1);
           }
@@ -40,6 +56,7 @@ jobs:
             templateType = 'bug';
           } else {
             console.log('❌ Template não reconhecido. Use um dos templates disponíveis: feature ou bug');
+            console.log('Conteúdo encontrado:', prBody.substring(0, 500));
             process.exit(1);
           }
           
@@ -81,20 +98,25 @@ jobs:
               }
             }
             
-            // Verificar se os campos obrigatórios têm conteúdo real
+            // Verificar se os campos obrigatórios têm conteúdo real (versão mais flexível)
             const lines = prBody.split('\n');
             let hasContent = false;
             
-            for (const line of lines) {
+            for (let i = 0; i < lines.length; i++) {
+              const line = lines[i];
               if (line.includes('Visão Geral') || line.includes('Mudanças Implementadas') || line.includes('Evidências de testes local:')) {
                 // Verificar se há conteúdo nas próximas linhas
-                const nextLines = lines.slice(lines.indexOf(line) + 1);
-                for (const nextLine of nextLines) {
-                  if (nextLine.trim().startsWith('-') && nextLine.trim().length > 1) {
-                    hasContent = true;
-                    break;
+                for (let j = i + 1; j < lines.length; j++) {
+                  const nextLine = lines[j].trim();
+                  if (nextLine.startsWith('-') && nextLine.length > 2) {
+                    // Verificar se não é lorem ipsum
+                    if (!nextLine.toLowerCase().includes('lorem ipsum')) {
+                      hasContent = true;
+                      console.log(`✅ Conteúdo válido encontrado: ${nextLine.substring(0, 50)}...`);
+                      break;
+                    }
                   }
-                  if (nextLine.trim() === '' || nextLine.includes('**')) {
+                  if (nextLine === '' || nextLine.includes('**') || nextLine.includes('<hr />')) {
                     break;
                   }
                 }
@@ -103,6 +125,7 @@ jobs:
             
             if (!hasContent) {
               console.log('❌ Campos obrigatórios não possuem conteúdo válido');
+              console.log('Verifique se os campos têm conteúdo real (não lorem ipsum)');
               process.exit(1);
             }
             
@@ -124,20 +147,25 @@ jobs:
               }
             }
             
-            // Verificar se os campos obrigatórios têm conteúdo real
+            // Verificar se os campos obrigatórios têm conteúdo real (versão mais flexível)
             const lines = prBody.split('\n');
             let hasContent = false;
             
-            for (const line of lines) {
+            for (let i = 0; i < lines.length; i++) {
+              const line = lines[i];
               if (line.includes('Resumo do incidente') || line.includes('Causa Raiz') || line.includes('Correção Realizada') || line.includes('Evidências de testes local:')) {
                 // Verificar se há conteúdo nas próximas linhas
-                const nextLines = lines.slice(lines.indexOf(line) + 1);
-                for (const nextLine of nextLines) {
-                  if (nextLine.trim().startsWith('-') && nextLine.trim().length > 1) {
-                    hasContent = true;
-                    break;
+                for (let j = i + 1; j < lines.length; j++) {
+                  const nextLine = lines[j].trim();
+                  if (nextLine.startsWith('-') && nextLine.length > 2) {
+                    // Verificar se não é lorem ipsum
+                    if (!nextLine.toLowerCase().includes('lorem ipsum')) {
+                      hasContent = true;
+                      console.log(`✅ Conteúdo válido encontrado: ${nextLine.substring(0, 50)}...`);
+                      break;
+                    }
                   }
-                  if (nextLine.trim() === '' || nextLine.includes('**')) {
+                  if (nextLine === '' || nextLine.includes('**') || nextLine.includes('<hr />')) {
                     break;
                   }
                 }
@@ -146,6 +174,7 @@ jobs:
             
             if (!hasContent) {
               console.log('❌ Campos obrigatórios não possuem conteúdo válido');
+              console.log('Verifique se os campos têm conteúdo real (não lorem ipsum)');
               process.exit(1);
             }
           }
