@@ -202,7 +202,7 @@ jobs:
             - Demandas relacionadas
             
             ### 💡 Dica:
-            Use um dos templates disponíveis em \`.github/pull_request_templates/\` e preencha com informações reais!`
+            Use um dos templates disponíveis em .github/pull_request_templates/ e preencha com informações reais!`
             })
 
       - name: Success Comment
