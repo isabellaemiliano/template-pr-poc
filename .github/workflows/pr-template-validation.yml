@@ -1,0 +1,220 @@
+name: Validação de Template de PR
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+jobs:
+  validate-pr-template:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Validate PR Template
+        id: validate-template
+        run: |
+          # Script para validar o template do PR
+          cat > validate_template.js << 'EOF'
+          const fs = require('fs');
+          
+          // Obter o corpo do PR
+          const prBody = process.env.PR_BODY || '';
+          
+          if (!prBody) {
+            console.log('❌ Corpo do PR está vazio');
+            process.exit(1);
+          }
+          
+          // Detectar tipo de template
+          let templateType = '';
+          if (prBody.includes(':clipboard: Título da demanda') && prBody.includes(':rocket: Visão Geral')) {
+            templateType = 'feature';
+          } else if (prBody.includes(':beetle: Título da demanda') && prBody.includes(':fire: Resumo do incidente')) {
+            templateType = 'bug';
+          } else {
+            console.log('❌ Template não reconhecido. Use um dos templates disponíveis: feature ou bug');
+            process.exit(1);
+          }
+          
+          console.log(`📋 Template detectado: ${templateType}`);
+          
+          // Valores lorem ipsum que não devem ser aceitos
+          const loremPatterns = [
+            'lorem ipsum dolor sit amet consectetur adipisicing elit',
+            'lorem ipsum dolor sit amet',
+            'lorem ipsum',
+            'MK-XXXX',
+            'MK-0000'
+          ];
+          
+          // Verificar se há valores lorem ipsum
+          for (const pattern of loremPatterns) {
+            if (prBody.toLowerCase().includes(pattern.toLowerCase())) {
+              console.log(`❌ Valor padrão detectado: "${pattern}"`);
+              console.log('⚠️  Por favor, preencha todos os campos com informações reais');
+              process.exit(1);
+            }
+          }
+          
+          // Validação específica por tipo de template
+          if (templateType === 'feature') {
+            const requiredFields = [
+              ':clipboard: Título da demanda',
+              ':zombie: Devs:',
+              ':label: Link da demanda:',
+              ':rocket: Visão Geral',
+              ':sparkles: Mudanças Implementadas',
+              ':mechanic: Evidências de testes local:'
+            ];
+            
+            for (const field of requiredFields) {
+              if (!prBody.includes(field)) {
+                console.log(`❌ Campo obrigatório ausente: ${field}`);
+                process.exit(1);
+              }
+            }
+            
+            // Verificar se os campos obrigatórios têm conteúdo real
+            const lines = prBody.split('\n');
+            let hasContent = false;
+            
+            for (const line of lines) {
+              if (line.includes('Visão Geral') || line.includes('Mudanças Implementadas') || line.includes('Evidências de testes local:')) {
+                // Verificar se há conteúdo nas próximas linhas
+                const nextLines = lines.slice(lines.indexOf(line) + 1);
+                for (const nextLine of nextLines) {
+                  if (nextLine.trim().startsWith('-') && nextLine.trim().length > 1) {
+                    hasContent = true;
+                    break;
+                  }
+                  if (nextLine.trim() === '' || nextLine.includes('**')) {
+                    break;
+                  }
+                }
+              }
+            }
+            
+            if (!hasContent) {
+              console.log('❌ Campos obrigatórios não possuem conteúdo válido');
+              process.exit(1);
+            }
+            
+          } else if (templateType === 'bug') {
+            const requiredFields = [
+              ':beetle: Título da demanda',
+              ':zombie: Devs:',
+              ':label: Link da demanda:',
+              ':fire: Resumo do incidente:',
+              ':hammer_and_wrench: Causa Raiz:',
+              ':wrench: Correção Realizada:',
+              ':mechanic: Evidências de testes local:'
+            ];
+            
+            for (const field of requiredFields) {
+              if (!prBody.includes(field)) {
+                console.log(`❌ Campo obrigatório ausente: ${field}`);
+                process.exit(1);
+              }
+            }
+            
+            // Verificar se os campos obrigatórios têm conteúdo real
+            const lines = prBody.split('\n');
+            let hasContent = false;
+            
+            for (const line of lines) {
+              if (line.includes('Resumo do incidente') || line.includes('Causa Raiz') || line.includes('Correção Realizada') || line.includes('Evidências de testes local:')) {
+                // Verificar se há conteúdo nas próximas linhas
+                const nextLines = lines.slice(lines.indexOf(line) + 1);
+                for (const nextLine of nextLines) {
+                  if (nextLine.trim().startsWith('-') && nextLine.trim().length > 1) {
+                    hasContent = true;
+                    break;
+                  }
+                  if (nextLine.trim() === '' || nextLine.includes('**')) {
+                    break;
+                  }
+                }
+              }
+            }
+            
+            if (!hasContent) {
+              console.log('❌ Campos obrigatórios não possuem conteúdo válido');
+              process.exit(1);
+            }
+          }
+          
+          console.log('✅ Template validado com sucesso!');
+          console.log('✅ Todos os campos obrigatórios estão preenchidos');
+          console.log('✅ Nenhum valor padrão (lorem ipsum) foi encontrado');
+          console.log('✅ Campos opcionais (Observações e Demandas relacionadas) podem estar vazios');
+          
+        EOF
+          
+          # Executar o script de validação
+          node validate_template.js
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+
+      - name: Comment on PR
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## ❌ Validação do Template Falhou
+            
+            O template do seu PR não passou na validação. Por favor, verifique:
+            
+            ### 🔍 Problemas encontrados:
+            - Certifique-se de que todos os campos obrigatórios estão preenchidos
+            - Remova todos os valores padrão (lorem ipsum, MK-XXXX, etc.)
+            - Preencha com informações reais sobre sua mudança
+            
+            ### 📋 Campos obrigatórios:
+            **Para Features:**
+            - Título da demanda
+            - Devs responsáveis
+            - Link da demanda
+            - Visão Geral
+            - Mudanças Implementadas
+            - Evidências de testes local
+            
+            **Para Bugs:**
+            - Título da demanda
+            - Devs responsáveis
+            - Link da demanda
+            - Resumo do incidente
+            - Causa Raiz
+            - Correção Realizada
+            - Evidências de testes local
+            
+            ### ℹ️ Campos opcionais:
+            - Observações
+            - Demandas relacionadas
+            
+            ### 💡 Dica:
+            Use um dos templates disponíveis em \`.github/pull_request_templates/\` e preencha com informações reais!`
+            })
+
+      - name: Success Comment
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## ✅ Template Validado com Sucesso!
+            
+            Seu PR passou na validação do template! Todos os campos obrigatórios estão preenchidos corretamente. 🎉`
+            })
