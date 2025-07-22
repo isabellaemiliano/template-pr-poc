@@ -20,7 +20,7 @@ jobs:
         id: validate-template
         run: |
           # Script para validar o template do PR
-          cat > validate_template.js << 'EOF'
+          cat > validate_template.js << 'SCRIPT_EOF'
           const fs = require('fs');
           
           // Obter o corpo do PR
@@ -154,7 +154,7 @@ jobs:
           console.log('✅ Nenhum valor padrão (lorem ipsum) foi encontrado');
           console.log('✅ Campos opcionais (Observações e Demandas relacionadas) podem estar vazios');
           
-        EOF
+          SCRIPT_EOF
           
           # Executar o script de validação
           node validate_template.js
