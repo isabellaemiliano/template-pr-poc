@@ -6,8 +6,9 @@ on:
   workflow_dispatch:
 
 permissions:
-  pull-requests: read
+  pull-requests: write
   contents: read
+  issues: write
 
 jobs:
   validate-pr-template:
@@ -196,11 +197,12 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `## ❌ Validação do Template Falhou
+            try {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## ❌ Validação do Template Falhou
             
             O template do seu PR não passou na validação. Por favor, verifique:
             
@@ -233,18 +235,29 @@ jobs:
             
             ### 💡 Dica:
             Use um dos templates disponíveis em .github/pull_request_templates/ e preencha com informações reais!`
-            })
+              });
+              console.log('✅ Comentário de erro adicionado com sucesso');
+            } catch (error) {
+              console.error('❌ Erro ao adicionar comentário:', error.message);
+              console.log('Continuando sem adicionar comentário...');
+            }
 
       - name: Success Comment
         if: success()
         uses: actions/github-script@v7
         with:
           script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `## ✅ Template Validado com Sucesso!
+            try {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## ✅ Template Validado com Sucesso!
             
             Seu PR passou na validação do template! Todos os campos obrigatórios estão preenchidos corretamente. 🎉`
-            })
+              });
+              console.log('✅ Comentário de sucesso adicionado');
+            } catch (error) {
+              console.error('❌ Erro ao adicionar comentário de sucesso:', error.message);
+              console.log('Continuando sem adicionar comentário...');
+            }
