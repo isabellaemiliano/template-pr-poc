@@ -4,30 +4,8 @@
 
 **Por favor, vá para a aba `Preview` e selecione o sub-template apropriado:**
 
-* **[🐛 BUG/INCIDENTE](?expand=1&template=bug_template.md)** - Use para correções de bugs, hotfixes e incidentes
-* **[✨ FEATURE](?expand=1&template=feature_template.md)** - Use para novas funcionalidades e melhorias
-
----
-
-## 🔍 **Quando Usar Cada Template**
-
-### 🐛 **Template BUG/INCIDENTE**
-Use este template quando:
-- ✅ Corrigir um bug reportado
-- ✅ Resolver um incidente em produção
-- ✅ Implementar hotfixes urgentes
-- ✅ Resolver problemas de performance críticos
-- ✅ Corrigir erros de validação ou validação de dados
-
-
-### ✨ **Template FEATURE**
-Use este template quando:
-- ✅ Implementar uma nova funcionalidade
-- ✅ Adicionar melhorias ao sistema
-- ✅ Criar novos componentes ou módulos
-- ✅ Implementar integrações
-- ✅ Melhorar a experiência do usuário
-- ✅ Implementar novas validações ou regras de negócio
+* **🐛 [BUG](?expand=1&template=bug_template.md)** - Use para correções de bugs, hotfixes e incidentes
+* **✨ [FEATURE](?expand=1&template=feature_template.md)** - Use para novas funcionalidades e melhorias
 
 ---
 
