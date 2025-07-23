@@ -45,8 +45,8 @@ jobs:
             echo "Template de Feature/Melhoria detectado."
             TEMPLATE_TYPE="feature"
             REQUIRED_SECTIONS=(
-              "#### **:rocket: Visão Geral**"
-              "#### **:sparkles: Mudanças Implementadas**"
+              "**:rocket: Visão Geral:**"
+              "**:sparkles: Mudanças Implementadas:**"
               "**:mechanic: Evidências de testes local:**"
             )
           else
