@@ -21,7 +21,7 @@ jobs:
           VALIDATION_STATUS="success"
           ERROR_MESSAGES=""
 
-          echo "Conteúdo do PR_BODY para depuração:"
+          echo "--- Conteúdo do PR_BODY para depuração ---"
           echo "$PR_BODY"
           echo "--- Fim do PR_BODY ---"
 
@@ -51,29 +51,37 @@ jobs:
 
           # --- Lógica para validar se as seções obrigatórias estão preenchidas ---
           if [ "$VALIDATION_STATUS" = "success" ]; then
+            # Padrões para identificar o início de uma nova seção (Markdown headers ou bold com emoji)
+            # ou o início de uma observação. Isso serve para delimitar o fim da seção atual.
+            NEXT_SECTION_PATTERN="^#+|^\\*\\*:|^>"
+
             for SECTION in "${REQUIRED_SECTIONS[@]}"; do
-              # Escapa caracteres especiais para o grep/sed
+              echo "Verificando seção: '$SECTION'"
+
+              # Escapa caracteres especiais para o sed
               ESCAPED_SECTION=$(echo "$SECTION" | sed 's/[][\/.^$*+?(){}|-]/\\&/g')
 
-              # Aprimoramento da extração de conteúdo:
-              # 1. Pega tudo a partir da seção atual
-              # 2. Encontra a próxima linha que seja um título de seção (começa com '#' ou '**:') ou uma observação ('>')
-              # 3. Remove essa próxima linha e tudo o que vem depois
-              # 4. Remove a linha do título da própria seção
-              # 5. Remove espaços em branco e novas linhas
+              # Usa sed para extrair o conteúdo entre a SECTION e o NEXT_SECTION_PATTERN
+              # O sed funciona assim:
+              # 1. Encontra a linha que começa com ESCAPED_SECTION
+              # 2. Imprime tudo até a linha que corresponde a NEXT_SECTION_PATTERN (sem incluir esta última)
+              # 3. 'd' para deletar as linhas que não estamos interessados
+              # 4. 'q' para sair após encontrar o padrão, evitando processar o resto do arquivo desnecessariamente
               SECTION_CONTENT=$(echo "$PR_BODY" | \
-                awk "/$ESCAPED_SECTION/{flag=1;next} /^#+|^\\*\\*|^>/{flag=0} flag" | \
-                sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | \
-                tr -d '\n' | \
-                sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+                sed -n "/^$ESCAPED_SECTION/,/^$NEXT_SECTION_PATTERN/{//!p; /^$NEXT_SECTION_PATTERN/q}" | \
+                sed '$d' | # Remove a última linha se ela for o próximo cabeçalho
+                sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | # Remove espaços em branco no início e fim
+                grep -v '^\s*$' | # Remove linhas que contêm apenas espaços em branco
+                tr -d '\n' | # Remove todas as quebras de linha
+                sed 's/^[[:space:]]*//;s/[[:space:]]*$//' # Remove espaços em branco no início e fim novamente
+              )
 
-              echo "Verificando seção: '$SECTION'"
               echo "Conteúdo encontrado para '$SECTION': '$SECTION_CONTENT'"
 
-              # Adiciona um caso para strings que contenham apenas espaços ou que sejam vazias
+              # Verifica se o conteúdo está vazio ou contém o placeholder
               if [ -z "$SECTION_CONTENT" ] || \
                  [[ "$SECTION_CONTENT" =~ ^[[:space:]]*lorem ipsum dolor sit amet consectetur adipisicing elit[[:space:]]*$ ]] || \
-                 [[ "$SECTION_CONTENT" =~ ^[[:space:]]*$ ]]; then # Adiciona verificação para conteúdo apenas com espaços
+                 [[ "$SECTION_CONTENT" =~ ^[[:space:]]*$ ]]; then
                 echo "Seção '$SECTION' está vazia ou contém placeholder."
                 VALIDATION_STATUS="failure"
                 ERROR_MESSAGES+="* A seção **${SECTION}** está vazia ou ainda contém o texto de placeholder.\n"
@@ -84,8 +92,7 @@ jobs:
           # --- Saída da validação ---
           if [ "$VALIDATION_STATUS" = "failure" ]; then
             echo "::error::Validação do Template do PR Falhou!"
-            # As saídas set-output estão depreciadas. Usaremos variáveis de ambiente no GitHub Actions.
-            # Para reportar um erro de forma mais visível, o exit 1 já é o suficiente.
+            # As saídas set-output foram removidas pois são depreciadas e não são mais necessárias para falhar a action
             exit 1 # Falha a Action se a validação falhar
           else
             echo "::notice::Validação do Template do PR bem-sucedida!"
