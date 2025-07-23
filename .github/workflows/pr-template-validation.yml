@@ -141,8 +141,8 @@ jobs:
             echo "$SECTION_CONTENT"
             echo "--- FIM DO CONTEÚDO ---"
             
-            # Remover linhas vazias e verificar se há conteúdo
-            SECTION_CONTENT_CLEAN=$(echo "$SECTION_CONTENT" | grep -v '^[[:space:]]*$' | tr -d '[:space:]')
+            # Remover apenas linhas vazias e verificar se há conteúdo
+            SECTION_CONTENT_CLEAN=$(echo "$SECTION_CONTENT" | grep -v '^[[:space:]]*$' | tr -s '[:space:]' ' ' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
             
             echo "Conteúdo limpo: '$SECTION_CONTENT_CLEAN'"
             echo "Tamanho do conteúdo limpo: ${#SECTION_CONTENT_CLEAN}"
