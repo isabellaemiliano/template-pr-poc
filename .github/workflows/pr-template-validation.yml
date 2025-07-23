@@ -8,6 +8,10 @@ on:
       - edited
       - synchronize # Executa quando novas mudanças são enviadas para o PR
 
+permissions:
+  pull-requests: write
+  issues: write
+
 jobs:
   validate_pr_template:
     runs-on: ubuntu-latest
@@ -87,7 +91,7 @@ jobs:
               # Extrai o conteúdo após a linha da seção até a próxima seção ou fim
               SECTION_CONTENT=$(echo "$PR_BODY" | awk -v section_line="$SECTION_LINE" '
                 NR > section_line {
-                  if ($0 ~ /^\*\*:/) exit
+                  if ($0 ~ /^####/ || $0 ~ /^\*\*:/) exit
                   if ($0 !~ /^[[:space:]]*$/) {
                     gsub(/^[[:space:]]+|[[:space:]]+$/, "")
                     if (content != "") content = content " "
@@ -141,11 +145,19 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const comment = `${{ steps.validate.outputs.comment_body }}`;
-            
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
+            try {
+              const comment = `${{ steps.validate.outputs.comment_body }}`;
+              
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+              
+              console.log('✅ Comentário postado com sucesso no PR');
+            } catch (error) {
+              console.error('❌ Erro ao postar comentário:', error.message);
+              console.error('Status:', error.status);
+              console.error('Response:', error.response?.data);
+            }
