@@ -22,7 +22,7 @@ jobs:
       - name: Validar Template do PR
         id: validate
         run: |
-          PR_BODY="${{ github.event.pull_request.body }}"
+          PR_BODY='${{ github.event.pull_request.body }}'
           VALIDATION_STATUS="success"
           ERROR_MESSAGES=""
           COMMENT_BODY=""
@@ -32,7 +32,7 @@ jobs:
           echo "--- Fim do PR_BODY ---"
 
           # --- Lógica para identificar qual template foi usado ---
-          if echo "$PR_BODY" | grep -q ":beetle:"; then
+          if echo "$PR_BODY" | grep -Fq ":beetle:"; then
             echo "Template de Incidente detectado."
             TEMPLATE_TYPE="incidente"
             REQUIRED_SECTIONS=(
@@ -41,7 +41,7 @@ jobs:
               "**:wrench: Correção Realizada:**"
               "**:mechanic: Evidências de testes local:**"
             )
-          elif echo "$PR_BODY" | grep -q ":clipboard:"; then
+          elif echo "$PR_BODY" | grep -Fq ":clipboard:"; then
             echo "Template de Feature/Melhoria detectado."
             TEMPLATE_TYPE="feature"
             REQUIRED_SECTIONS=(
@@ -107,13 +107,13 @@ jobs:
               
               # Verifica se há mídia (imagens ou vídeos) no conteúdo
               HAS_MEDIA=false
-              if echo "$SECTION_CONTENT" | grep -q "!\[.*\](.*)" || echo "$SECTION_CONTENT" | grep -q "\[.*\](.*)" || echo "$SECTION_CONTENT" | grep -q "<video\|<img\|<iframe"; then
+              if echo "$SECTION_CONTENT" | grep -Fq "![[" || echo "$SECTION_CONTENT" | grep -Fq "](http" || echo "$SECTION_CONTENT" | grep -Fq "<video" || echo "$SECTION_CONTENT" | grep -Fq "<img" || echo "$SECTION_CONTENT" | grep -Fq "<iframe"; then
                 HAS_MEDIA=true
                 echo "Mídia detectada na seção '$SECTION'"
               fi
               
               if [ -z "$CLEAN_CONTENT" ] || \
-                 echo "$CLEAN_CONTENT" | grep -q "lorem ipsum dolor sit amet consectetur adipisicing elit" || \
+                 echo "$CLEAN_CONTENT" | grep -Fq "lorem ipsum dolor sit amet consectetur adipisicing elit" || \
                  ([ -z "$(echo "$CLEAN_CONTENT" | tr -d '[:space:]')" ] && [ "$HAS_MEDIA" = false ]); then
                 echo "Seção '$SECTION' está vazia ou contém placeholder."
                 VALIDATION_STATUS="failure"
