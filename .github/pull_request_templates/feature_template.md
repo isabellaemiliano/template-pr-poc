@@ -4,10 +4,11 @@
 - :label: Link da demanda: [MK-XXXX](https://mercafacil.atlassian.net/browse/MK-XXXX)
 
 
-#### **:rocket: Visão Geral**
+**:rocket: Visão Geral:**
+
 - lorem ipsum dolor sit amet consectetur adipisicing elit. lorem ipsum dolor sit amet consectetur adipisicing elit. lorem ipsum dolor sit amet consectetur adipisicing elit.
 
-#### **:sparkles: Mudanças Implementadas**
+**:sparkles: Mudanças Implementadas:**
 
 - lorem ipsum dolor sit amet consectetur adipisicing elit.
 - lorem ipsum dolor sit amet consectetur adipisicing elit.

@@ -114,24 +114,24 @@ jobs:
             # Extrair o conteúdo da seção (até a próxima seção ou fim)
             if [ "$TEMPLATE_TYPE" = "feature" ]; then
               if [ "$section" = ":rocket: Visão Geral" ]; then
-                # Extrair conteúdo entre "#### **:rocket: Visão Geral**" e "#### **:sparkles: Mudanças Implementadas**"
-                SECTION_CONTENT=$(echo "$PR_BODY" | awk '/^#### \*\*:rocket: Visão Geral\*\*$/,/^#### \*\*:sparkles: Mudanças Implementadas\*\*$/' | tail -n +2 | head -n -1)
+                # Extrair conteúdo entre "**:rocket: Visão Geral:**" e "**:sparkles: Mudanças Implementadas:**"
+                SECTION_CONTENT=$(echo "$PR_BODY" | awk '/^\*\*:rocket: Visão Geral:\*\*$/,/^\*\*:sparkles: Mudanças Implementadas:\*\*$/' | tail -n +2 | head -n -1)
               elif [ "$section" = ":sparkles: Mudanças Implementadas" ]; then
-                # Extrair conteúdo entre "#### **:sparkles: Mudanças Implementadas**" e "#### **:mechanic: Evidências de testes local:**"
-                SECTION_CONTENT=$(echo "$PR_BODY" | awk '/^#### \*\*:sparkles: Mudanças Implementadas\*\*$/,/^#### \*\*:mechanic: Evidências de testes local:\*\*$/' | tail -n +2 | head -n -1)
+                # Extrair conteúdo entre "**:sparkles: Mudanças Implementadas:**" e "**:mechanic: Evidências de testes local:**"
+                SECTION_CONTENT=$(echo "$PR_BODY" | awk '/^\*\*:sparkles: Mudanças Implementadas:\*\*$/,/^\*\*:mechanic: Evidências de testes local:\*\*$/' | tail -n +2 | head -n -1)
               elif [ "$section" = ":mechanic: Evidências de testes local" ]; then
-                # Extrair conteúdo entre "#### **:mechanic: Evidências de testes local:**" e "<hr />"
-                SECTION_CONTENT=$(echo "$PR_BODY" | awk '/^#### \*\*:mechanic: Evidências de testes local:\*\*$/,/^<hr \/>$/' | tail -n +2 | head -n -1)
+                # Extrair conteúdo entre "**:mechanic: Evidências de testes local:**" e "<hr />"
+                SECTION_CONTENT=$(echo "$PR_BODY" | awk '/^\*\*:mechanic: Evidências de testes local:\*\*$/,/^<hr \/>$/' | tail -n +2 | head -n -1)
               fi
             else
               if [ "$section" = ":fire: Resumo do incidente" ]; then
-                SECTION_CONTENT=$(echo "$PR_BODY" | awk '/^#### \*\*:fire: Resumo do incidente:\*\*$/,/^#### \*\*:hammer_and_wrench: Causa Raiz:\*\*$/' | tail -n +2 | head -n -1)
+                SECTION_CONTENT=$(echo "$PR_BODY" | awk '/^\*\*:fire: Resumo do incidente:\*\*$/,/^\*\*:hammer_and_wrench: Causa Raiz:\*\*$/' | tail -n +2 | head -n -1)
               elif [ "$section" = ":hammer_and_wrench: Causa Raiz" ]; then
-                SECTION_CONTENT=$(echo "$PR_BODY" | awk '/^#### \*\*:hammer_and_wrench: Causa Raiz:\*\*$/,/^#### \*\*:wrench: Correção Realizada:\*\*$/' | tail -n +2 | head -n -1)
+                SECTION_CONTENT=$(echo "$PR_BODY" | awk '/^\*\*:hammer_and_wrench: Causa Raiz:\*\*$/,/^\*\*:wrench: Correção Realizada:\*\*$/' | tail -n +2 | head -n -1)
               elif [ "$section" = ":wrench: Correção Realizada" ]; then
-                SECTION_CONTENT=$(echo "$PR_BODY" | awk '/^#### \*\*:wrench: Correção Realizada:\*\*$/,/^#### \*\*:mechanic: Evidências de testes local:\*\*$/' | tail -n +2 | head -n -1)
+                SECTION_CONTENT=$(echo "$PR_BODY" | awk '/^\*\*:wrench: Correção Realizada:\*\*$/,/^\*\*:mechanic: Evidências de testes local:\*\*$/' | tail -n +2 | head -n -1)
               elif [ "$section" = ":mechanic: Evidências de testes local" ]; then
-                SECTION_CONTENT=$(echo "$PR_BODY" | awk '/^#### \*\*:mechanic: Evidências de testes local:\*\*$/,/^<hr \/>$/' | tail -n +2 | head -n -1)
+                SECTION_CONTENT=$(echo "$PR_BODY" | awk '/^\*\*:mechanic: Evidências de testes local:\*\*$/,/^<hr \/>$/' | tail -n +2 | head -n -1)
               fi
             fi
             
