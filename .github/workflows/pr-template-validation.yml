@@ -26,7 +26,7 @@ jobs:
           echo "--- Fim do PR_BODY ---"
 
           # --- Lógica para identificar qual template foi usado ---
-          if echo "$PR_BODY" | grep -q ":beetle: Título da demanda"; then
+          if echo "$PR_BODY" | grep -q ":beetle:"; then
             echo "Template de Incidente detectado."
             TEMPLATE_TYPE="incidente"
             REQUIRED_SECTIONS=(
@@ -35,7 +35,7 @@ jobs:
               "**:wrench: Correção Realizada**"
               "**:mechanic: Evidências de testes local:**"
             )
-          elif echo "$PR_BODY" | grep -q ":clipboard: Título da demanda"; then
+          elif echo "$PR_BODY" | grep -q ":clipboard:"; then
             echo "Template de Feature/Melhoria detectado."
             TEMPLATE_TYPE="feature"
             REQUIRED_SECTIONS=(
@@ -80,8 +80,8 @@ jobs:
 
               # Verifica se o conteúdo está vazio ou contém o placeholder
               if [ -z "$SECTION_CONTENT" ] || \
-                 [[ "$SECTION_CONTENT" =~ ^[[:space:]]*lorem ipsum dolor sit amet consectetur adipisicing elit[[:space:]]*$ ]] || \
-                 [[ "$SECTION_CONTENT" =~ ^[[:space:]]*$ ]]; then
+                 echo "$SECTION_CONTENT" | grep -q "lorem ipsum dolor sit amet consectetur adipisicing elit" || \
+                 [ -z "$(echo "$SECTION_CONTENT" | tr -d '[:space:]')" ]; then
                 echo "Seção '$SECTION' está vazia ou contém placeholder."
                 VALIDATION_STATUS="failure"
                 ERROR_MESSAGES+="* A seção **${SECTION}** está vazia ou ainda contém o texto de placeholder.\n"
@@ -92,6 +92,7 @@ jobs:
           # --- Saída da validação ---
           if [ "$VALIDATION_STATUS" = "failure" ]; then
             echo "::error::Validação do Template do PR Falhou!"
+            echo "$ERROR_MESSAGES"
             # As saídas set-output foram removidas pois são depreciadas e não são mais necessárias para falhar a action
             exit 1 # Falha a Action se a validação falhar
           else
