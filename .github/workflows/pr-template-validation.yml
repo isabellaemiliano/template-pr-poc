@@ -91,10 +91,15 @@ jobs:
               # Extrai o conteúdo após a linha da seção até a próxima seção ou fim
               SECTION_CONTENT=$(echo "$PR_BODY" | awk -v section_line="$SECTION_LINE" '
                 NR > section_line {
+                  # Para quando encontra uma nova seção (#### ou **:)
                   if ($0 ~ /^####/ || $0 ~ /^\*\*:/) exit
-                  if ($0 !~ /^[[:space:]]*$/) {
-                    gsub(/^[[:space:]]+|[[:space:]]+$/, "")
-                    if (content != "") content = content " "
+                  
+                  # Remove espaços em branco no início e fim
+                  gsub(/^[[:space:]]+|[[:space:]]+$/, "")
+                  
+                  # Se a linha não está vazia, adiciona ao conteúdo
+                  if ($0 != "") {
+                    if (content != "") content = content "\n"
                     content = content $0
                   }
                 }
@@ -104,20 +109,40 @@ jobs:
               echo "Conteúdo encontrado para '$SECTION': '$SECTION_CONTENT'"
 
               # Verifica se o conteúdo está vazio ou contém o placeholder
-              if [ -z "$SECTION_CONTENT" ] || \
-                 echo "$SECTION_CONTENT" | grep -q "lorem ipsum dolor sit amet consectetur adipisicing elit" || \
-                 [ -z "$(echo "$SECTION_CONTENT" | tr -d '[:space:]')" ]; then
+              # Remove quebras de linha e espaços para verificar se há conteúdo real
+              CLEAN_CONTENT=$(echo "$SECTION_CONTENT" | tr '\n' ' ' | sed 's/[[:space:]]\+/ /g' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+              
+              # Verifica se há mídia (imagens ou vídeos) no conteúdo
+              HAS_MEDIA=false
+              if echo "$SECTION_CONTENT" | grep -q "!\[.*\](.*)" || echo "$SECTION_CONTENT" | grep -q "\[.*\](.*)" || echo "$SECTION_CONTENT" | grep -q "<video\|<img\|<iframe"; then
+                HAS_MEDIA=true
+                echo "Mídia detectada na seção '$SECTION'"
+              fi
+              
+              if [ -z "$CLEAN_CONTENT" ] || \
+                 echo "$CLEAN_CONTENT" | grep -q "lorem ipsum dolor sit amet consectetur adipisicing elit" || \
+                 ([ -z "$(echo "$CLEAN_CONTENT" | tr -d '[:space:]')" ] && [ "$HAS_MEDIA" = false ]); then
                 echo "Seção '$SECTION' está vazia ou contém placeholder."
                 VALIDATION_STATUS="failure"
                 ERROR_MESSAGES+="* A seção **${SECTION}** está vazia ou ainda contém o texto de placeholder.\n"
                 COMMENT_BODY+="### 🔍 **${SECTION}**\n"
                 COMMENT_BODY+="**Status:** ❌ **Vazia ou com placeholder**\n\n"
                 COMMENT_BODY+="**Problema:** Esta seção está vazia ou ainda contém o texto de placeholder.\n\n"
-                COMMENT_BODY+="**Conteúdo atual:** \`$SECTION_CONTENT\`\n\n"
+                
+                # Trunca o conteúdo se for muito longo para exibição
+                DISPLAY_CONTENT="$SECTION_CONTENT"
+                if [ ${#DISPLAY_CONTENT} -gt 200 ]; then
+                  DISPLAY_CONTENT="$(echo "$SECTION_CONTENT" | head -c 200)..."
+                fi
+                
+                COMMENT_BODY+="**Conteúdo atual:** \`$DISPLAY_CONTENT\`\n\n"
                 COMMENT_BODY+="**Solução:** Preencha esta seção com informações relevantes sobre sua mudança.\n\n"
               else
                 COMMENT_BODY+="### ✅ **${SECTION}**\n"
                 COMMENT_BODY+="**Status:** ✅ **Válida**\n\n"
+                if [ "$HAS_MEDIA" = true ]; then
+                  COMMENT_BODY+="**Observação:** Mídia (imagem/vídeo) detectada nesta seção.\n\n"
+                fi
               fi
             done
             
