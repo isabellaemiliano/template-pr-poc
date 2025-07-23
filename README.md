@@ -101,6 +101,4 @@ O template do seu PR não passou na validação. Por favor, verifique:
 - Certifique-se de que todos os campos obrigatórios estão preenchidos
 - Remova todos os valores padrão (lorem ipsum, MK-XXXX, etc.)
 - Preencha com informações reais sobre sua mudança
-
-[... detalhes dos campos obrigatórios ...]
 ```
