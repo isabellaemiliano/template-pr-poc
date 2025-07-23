@@ -68,13 +68,17 @@ jobs:
               fi
 
               # Extrai o conteúdo após a linha da seção até a próxima seção ou fim
-              SECTION_CONTENT=$(echo "$PR_BODY" | tail -n +$((SECTION_LINE + 1)) | \
-                sed '/^**:/q' | \
-                sed '$d' | \
-                sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | \
-                grep -v '^\s*$' | \
-                tr '\n' ' ' | \
-                sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+              SECTION_CONTENT=$(echo "$PR_BODY" | awk -v section_line="$SECTION_LINE" '
+                NR > section_line {
+                  if ($0 ~ /^\*\*:/) exit
+                  if ($0 !~ /^[[:space:]]*$/) {
+                    gsub(/^[[:space:]]+|[[:space:]]+$/, "")
+                    if (content != "") content = content " "
+                    content = content $0
+                  }
+                }
+                END { print content }
+              ')
 
               echo "Conteúdo encontrado para '$SECTION': '$SECTION_CONTENT'"
 
