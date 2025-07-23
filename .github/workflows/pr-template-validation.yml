@@ -30,9 +30,9 @@ jobs:
             echo "Template de Incidente detectado."
             TEMPLATE_TYPE="incidente"
             REQUIRED_SECTIONS=(
-              "**:fire: Resumo do incidente**"
-              "**:hammer_and_wrench: Causa Raiz**"
-              "**:wrench: Correção Realizada**"
+              "**:fire: Resumo do incidente:**"
+              "**:hammer_and_wrench: Causa Raiz:**"
+              "**:wrench: Correção Realizada:**"
               "**:mechanic: Evidências de testes local:**"
             )
           elif echo "$PR_BODY" | grep -q ":clipboard:"; then
@@ -51,30 +51,30 @@ jobs:
 
           # --- Lógica para validar se as seções obrigatórias estão preenchidas ---
           if [ "$VALIDATION_STATUS" = "success" ]; then
-            # Padrões para identificar o início de uma nova seção (Markdown headers ou bold com emoji)
-            # ou o início de uma observação. Isso serve para delimitar o fim da seção atual.
-            NEXT_SECTION_PATTERN="^#+|^\\*\\*:|^>"
-
             for SECTION in "${REQUIRED_SECTIONS[@]}"; do
               echo "Verificando seção: '$SECTION'"
 
-              # Escapa caracteres especiais para o sed
+              # Escapa caracteres especiais para o grep
               ESCAPED_SECTION=$(echo "$SECTION" | sed 's/[][\/.^$*+?(){}|-]/\\&/g')
 
-              # Usa sed para extrair o conteúdo entre a SECTION e o NEXT_SECTION_PATTERN
-              # O sed funciona assim:
-              # 1. Encontra a linha que começa com ESCAPED_SECTION
-              # 2. Imprime tudo até a linha que corresponde a NEXT_SECTION_PATTERN (sem incluir esta última)
-              # 3. 'd' para deletar as linhas que não estamos interessados
-              # 4. 'q' para sair após encontrar o padrão, evitando processar o resto do arquivo desnecessariamente
-              SECTION_CONTENT=$(echo "$PR_BODY" | \
-                sed -n "/^$ESCAPED_SECTION/,/^$NEXT_SECTION_PATTERN/{//!p; /^$NEXT_SECTION_PATTERN/q}" | \
-                sed '$d' | # Remove a última linha se ela for o próximo cabeçalho
-                sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | # Remove espaços em branco no início e fim
-                grep -v '^\s*$' | # Remove linhas que contêm apenas espaços em branco
-                tr -d '\n' | # Remove todas as quebras de linha
-                sed 's/^[[:space:]]*//;s/[[:space:]]*$//' # Remove espaços em branco no início e fim novamente
-              )
+              # Encontra a linha que contém a seção
+              SECTION_LINE=$(echo "$PR_BODY" | grep -n "^$ESCAPED_SECTION" | head -1 | cut -d: -f1)
+              
+              if [ -z "$SECTION_LINE" ]; then
+                echo "Seção '$SECTION' não encontrada no PR."
+                VALIDATION_STATUS="failure"
+                ERROR_MESSAGES+="* A seção **${SECTION}** não foi encontrada no PR.\n"
+                continue
+              fi
+
+              # Extrai o conteúdo após a linha da seção até a próxima seção ou fim
+              SECTION_CONTENT=$(echo "$PR_BODY" | tail -n +$((SECTION_LINE + 1)) | \
+                sed '/^**:/q' | \
+                sed '$d' | \
+                sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | \
+                grep -v '^\s*$' | \
+                tr '\n' ' ' | \
+                sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
 
               echo "Conteúdo encontrado para '$SECTION': '$SECTION_CONTENT'"
 
