@@ -26,27 +26,22 @@ jobs:
           echo "--- Fim do PR_BODY ---"
 
           # --- Lógica para identificar qual template foi usado ---
-          # Removi os ':' e '#### **' na verificação para maior flexibilidade
-          # Verifica se é o template de incidente (:beetle:)
           if echo "$PR_BODY" | grep -q ":beetle: Título da demanda"; then
             echo "Template de Incidente detectado."
             TEMPLATE_TYPE="incidente"
-            # Ajustado para corresponder à formatação exata dos títulos no corpo do PR
             REQUIRED_SECTIONS=(
               "**:fire: Resumo do incidente**"
               "**:hammer_and_wrench: Causa Raiz**"
               "**:wrench: Correção Realizada**"
-              "**:mechanic: Evidências de testes local:**" # Esta mantém o ':' se for o caso
+              "**:mechanic: Evidências de testes local:**"
             )
-          # Verifica se é o template de feature/melhoria (:clipboard:)
           elif echo "$PR_BODY" | grep -q ":clipboard: Título da demanda"; then
             echo "Template de Feature/Melhoria detectado."
             TEMPLATE_TYPE="feature"
-            # Ajustado para corresponder à formatação exata dos títulos no corpo do PR
             REQUIRED_SECTIONS=(
               "#### **:rocket: Visão Geral**"
               "#### **:sparkles: Mudanças Implementadas**"
-              "**:mechanic: Evidências de testes local:**" # Esta mantém o ':' se for o caso
+              "**:mechanic: Evidências de testes local:**"
             )
           else
             echo "Nenhum template reconhecido. Por favor, utilize um dos templates padrão."
@@ -57,19 +52,28 @@ jobs:
           # --- Lógica para validar se as seções obrigatórias estão preenchidas ---
           if [ "$VALIDATION_STATUS" = "success" ]; then
             for SECTION in "${REQUIRED_SECTIONS[@]}"; do
-              # Escapa caracteres especiais para o grep/awk
+              # Escapa caracteres especiais para o grep/sed
               ESCAPED_SECTION=$(echo "$SECTION" | sed 's/[][\/.^$*+?(){}|-]/\\&/g')
 
-              # Pega o texto entre a seção atual e a próxima seção ou o final do PR
-              # A regex foi ajustada para ser mais flexível, procurando pelo título da seção
-              # e capturando tudo até o próximo título de seção que comece com '**:', '#### **:' ou '**:''
-              # ou o fim do corpo do PR.
-              SECTION_CONTENT=$(echo "$PR_BODY" | awk "/$ESCAPED_SECTION/{flag=1;next} /^(\*\*|####)\s*:[a-zA-Z0-9_]+:\s+|^>/{flag=0} flag" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr -d '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+              # Aprimoramento da extração de conteúdo:
+              # 1. Pega tudo a partir da seção atual
+              # 2. Encontra a próxima linha que seja um título de seção (começa com '#' ou '**:') ou uma observação ('>')
+              # 3. Remove essa próxima linha e tudo o que vem depois
+              # 4. Remove a linha do título da própria seção
+              # 5. Remove espaços em branco e novas linhas
+              SECTION_CONTENT=$(echo "$PR_BODY" | \
+                awk "/$ESCAPED_SECTION/{flag=1;next} /^#+|^\\*\\*|^>/{flag=0} flag" | \
+                sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | \
+                tr -d '\n' | \
+                sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
 
               echo "Verificando seção: '$SECTION'"
               echo "Conteúdo encontrado para '$SECTION': '$SECTION_CONTENT'"
 
-              if [ -z "$SECTION_CONTENT" ] || [[ "$SECTION_CONTENT" =~ ^[[:space:]]*lorem ipsum dolor sit amet consectetur adipisicing elit[[:space:]]*$ ]]; then
+              # Adiciona um caso para strings que contenham apenas espaços ou que sejam vazias
+              if [ -z "$SECTION_CONTENT" ] || \
+                 [[ "$SECTION_CONTENT" =~ ^[[:space:]]*lorem ipsum dolor sit amet consectetur adipisicing elit[[:space:]]*$ ]] || \
+                 [[ "$SECTION_CONTENT" =~ ^[[:space:]]*$ ]]; then # Adiciona verificação para conteúdo apenas com espaços
                 echo "Seção '$SECTION' está vazia ou contém placeholder."
                 VALIDATION_STATUS="failure"
                 ERROR_MESSAGES+="* A seção **${SECTION}** está vazia ou ainda contém o texto de placeholder.\n"
@@ -80,10 +84,9 @@ jobs:
           # --- Saída da validação ---
           if [ "$VALIDATION_STATUS" = "failure" ]; then
             echo "::error::Validação do Template do PR Falhou!"
-            echo -e "::set-output name=validation_result::failure"
-            echo -e "::set-output name=error_message::${ERROR_MESSAGES}"
+            # As saídas set-output estão depreciadas. Usaremos variáveis de ambiente no GitHub Actions.
+            # Para reportar um erro de forma mais visível, o exit 1 já é o suficiente.
             exit 1 # Falha a Action se a validação falhar
           else
             echo "::notice::Validação do Template do PR bem-sucedida!"
-            echo -e "::set-output name=validation_result::success"
           fi
