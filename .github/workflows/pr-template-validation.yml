@@ -24,6 +24,12 @@ jobs:
           
           echo "=== VALIDAÇÃO DO TEMPLATE ==="
           echo "Tamanho do corpo: ${#PR_BODY} caracteres"
+          echo "Primeiros 200 caracteres do corpo:"
+          echo "$PR_BODY" | head -c 200
+          echo ""
+          echo "Últimos 200 caracteres do corpo:"
+          echo "$PR_BODY" | tail -c 200
+          echo ""
           
           # Verificar se o corpo não está vazio
           if [ -z "$PR_BODY" ]; then
@@ -108,26 +114,38 @@ jobs:
             # Extrair o conteúdo da seção (até a próxima seção ou fim)
             if [ "$TEMPLATE_TYPE" = "feature" ]; then
               if [ "$section" = ":rocket: Visão Geral" ]; then
-                SECTION_CONTENT=$(echo "$PR_BODY" | sed -n '/^#### \*\*:rocket: Visão Geral\*\*$/,/^#### \*\*:sparkles: Mudanças Implementadas\*\*$/p' | tail -n +2 | head -n -1)
+                # Extrair conteúdo entre "#### **:rocket: Visão Geral**" e "#### **:sparkles: Mudanças Implementadas**"
+                SECTION_CONTENT=$(echo "$PR_BODY" | awk '/^#### \*\*:rocket: Visão Geral\*\*$/,/^#### \*\*:sparkles: Mudanças Implementadas\*\*$/' | tail -n +2 | head -n -1)
               elif [ "$section" = ":sparkles: Mudanças Implementadas" ]; then
-                SECTION_CONTENT=$(echo "$PR_BODY" | sed -n '/^#### \*\*:sparkles: Mudanças Implementadas\*\*$/,/^#### \*\*:mechanic: Evidências de testes local:\*\*$/p' | tail -n +2 | head -n -1)
+                # Extrair conteúdo entre "#### **:sparkles: Mudanças Implementadas**" e "#### **:mechanic: Evidências de testes local:**"
+                SECTION_CONTENT=$(echo "$PR_BODY" | awk '/^#### \*\*:sparkles: Mudanças Implementadas\*\*$/,/^#### \*\*:mechanic: Evidências de testes local:\*\*$/' | tail -n +2 | head -n -1)
               elif [ "$section" = ":mechanic: Evidências de testes local" ]; then
-                SECTION_CONTENT=$(echo "$PR_BODY" | sed -n '/^#### \*\*:mechanic: Evidências de testes local:\*\*$/,/^<hr \/>$/p' | tail -n +2 | head -n -1)
+                # Extrair conteúdo entre "#### **:mechanic: Evidências de testes local:**" e "<hr />"
+                SECTION_CONTENT=$(echo "$PR_BODY" | awk '/^#### \*\*:mechanic: Evidências de testes local:\*\*$/,/^<hr \/>$/' | tail -n +2 | head -n -1)
               fi
             else
               if [ "$section" = ":fire: Resumo do incidente" ]; then
-                SECTION_CONTENT=$(echo "$PR_BODY" | sed -n '/^#### \*\*:fire: Resumo do incidente:\*\*$/,/^#### \*\*:hammer_and_wrench: Causa Raiz:\*\*$/p' | tail -n +2 | head -n -1)
+                SECTION_CONTENT=$(echo "$PR_BODY" | awk '/^#### \*\*:fire: Resumo do incidente:\*\*$/,/^#### \*\*:hammer_and_wrench: Causa Raiz:\*\*$/' | tail -n +2 | head -n -1)
               elif [ "$section" = ":hammer_and_wrench: Causa Raiz" ]; then
-                SECTION_CONTENT=$(echo "$PR_BODY" | sed -n '/^#### \*\*:hammer_and_wrench: Causa Raiz:\*\*$/,/^#### \*\*:wrench: Correção Realizada:\*\*$/p' | tail -n +2 | head -n -1)
+                SECTION_CONTENT=$(echo "$PR_BODY" | awk '/^#### \*\*:hammer_and_wrench: Causa Raiz:\*\*$/,/^#### \*\*:wrench: Correção Realizada:\*\*$/' | tail -n +2 | head -n -1)
               elif [ "$section" = ":wrench: Correção Realizada" ]; then
-                SECTION_CONTENT=$(echo "$PR_BODY" | sed -n '/^#### \*\*:wrench: Correção Realizada:\*\*$/,/^#### \*\*:mechanic: Evidências de testes local:\*\*$/p' | tail -n +2 | head -n -1)
+                SECTION_CONTENT=$(echo "$PR_BODY" | awk '/^#### \*\*:wrench: Correção Realizada:\*\*$/,/^#### \*\*:mechanic: Evidências de testes local:\*\*$/' | tail -n +2 | head -n -1)
               elif [ "$section" = ":mechanic: Evidências de testes local" ]; then
-                SECTION_CONTENT=$(echo "$PR_BODY" | sed -n '/^#### \*\*:mechanic: Evidências de testes local:\*\*$/,/^<hr \/>$/p' | tail -n +2 | head -n -1)
+                SECTION_CONTENT=$(echo "$PR_BODY" | awk '/^#### \*\*:mechanic: Evidências de testes local:\*\*$/,/^<hr \/>$/' | tail -n +2 | head -n -1)
               fi
             fi
             
+            # Debug: mostrar o conteúdo extraído
+            echo "Conteúdo extraído para '$section':"
+            echo "--- INÍCIO DO CONTEÚDO ---"
+            echo "$SECTION_CONTENT"
+            echo "--- FIM DO CONTEÚDO ---"
+            
             # Remover linhas vazias e verificar se há conteúdo
             SECTION_CONTENT_CLEAN=$(echo "$SECTION_CONTENT" | grep -v '^[[:space:]]*$' | tr -d '[:space:]')
+            
+            echo "Conteúdo limpo: '$SECTION_CONTENT_CLEAN'"
+            echo "Tamanho do conteúdo limpo: ${#SECTION_CONTENT_CLEAN}"
             
             if [ -z "$SECTION_CONTENT_CLEAN" ]; then
               echo "❌ Seção '$section' está vazia ou não preenchida"
