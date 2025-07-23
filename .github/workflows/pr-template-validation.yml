@@ -53,20 +53,15 @@ jobs:
             echo "Nenhum template reconhecido. Por favor, utilize um dos templates padrão."
             VALIDATION_STATUS="failure"
             ERROR_MESSAGES+="* Nenhum template de PR reconhecido. Por favor, use o template de Incidente ou de Feature/Melhoria.\n"
-            COMMENT_BODY+="## ❌ Validação do Template do PR Falhou!\n\n"
-            COMMENT_BODY+="**Problema:** Nenhum template de PR foi reconhecido.\n\n"
-            COMMENT_BODY+="**Solução:** Por favor, utilize um dos templates padrão:\n"
+            COMMENT_BODY+="## ❌ Template não reconhecido\n\n"
+            COMMENT_BODY+="Use um dos templates padrão:\n"
             COMMENT_BODY+="- Template de **Incidente** (deve conter \`:beetle:\`)\n"
-            COMMENT_BODY+="- Template de **Feature/Melhoria** (deve conter \`:clipboard:\`)\n\n"
-            COMMENT_BODY+="---\n"
-            COMMENT_BODY+="*Este comentário foi gerado automaticamente pela validação de templates.*"
+            COMMENT_BODY+="- Template de **Feature/Melhoria** (deve conter \`:clipboard:\`)\n"
           fi
 
           # --- Lógica para validar se as seções obrigatórias estão preenchidas ---
           if [ "$VALIDATION_STATUS" = "success" ]; then
-            COMMENT_BODY+="## ❌ Validação do Template do PR Falhou!\n\n"
-            COMMENT_BODY+="**Template detectado:** $TEMPLATE_TYPE\n\n"
-            COMMENT_BODY+="**Problemas encontrados:**\n\n"
+            COMMENT_BODY+="## ❌ Template incompleto\n\n"
             
             for SECTION in "${REQUIRED_SECTIONS[@]}"; do
               echo "Verificando seção: '$SECTION'"
@@ -81,10 +76,8 @@ jobs:
                 echo "Seção '$SECTION' não encontrada no PR."
                 VALIDATION_STATUS="failure"
                 ERROR_MESSAGES+="* A seção **${SECTION}** não foi encontrada no PR.\n"
-                COMMENT_BODY+="### 🔍 **${SECTION}**\n"
-                COMMENT_BODY+="**Status:** ❌ **Não encontrada**\n\n"
-                COMMENT_BODY+="**Problema:** Esta seção obrigatória não foi encontrada no PR.\n\n"
-                COMMENT_BODY+="**Solução:** Adicione esta seção ao seu PR seguindo o template padrão.\n\n"
+                COMMENT_BODY+="### ❌ **${SECTION}**\n"
+                COMMENT_BODY+="Adicione esta seção ao seu PR.\n\n"
                 continue
               fi
 
@@ -125,18 +118,8 @@ jobs:
                 echo "Seção '$SECTION' está vazia ou contém placeholder."
                 VALIDATION_STATUS="failure"
                 ERROR_MESSAGES+="* A seção **${SECTION}** está vazia ou ainda contém o texto de placeholder.\n"
-                COMMENT_BODY+="### 🔍 **${SECTION}**\n"
-                COMMENT_BODY+="**Status:** ❌ **Vazia ou com placeholder**\n\n"
-                COMMENT_BODY+="**Problema:** Esta seção está vazia ou ainda contém o texto de placeholder.\n\n"
-                
-                # Trunca o conteúdo se for muito longo para exibição
-                DISPLAY_CONTENT="$SECTION_CONTENT"
-                if [ ${#DISPLAY_CONTENT} -gt 200 ]; then
-                  DISPLAY_CONTENT="$(echo "$SECTION_CONTENT" | head -c 200)..."
-                fi
-                
-                COMMENT_BODY+="**Conteúdo atual:** \`$DISPLAY_CONTENT\`\n\n"
-                COMMENT_BODY+="**Solução:** Preencha esta seção com informações relevantes sobre sua mudança.\n\n"
+                COMMENT_BODY+="### ❌ **${SECTION}**\n"
+                COMMENT_BODY+="Preencha esta seção com informações relevantes.\n\n"
               else
                 COMMENT_BODY+="### ✅ **${SECTION}**\n"
                 COMMENT_BODY+="**Status:** ✅ **Válida**\n\n"
@@ -145,9 +128,6 @@ jobs:
                 fi
               fi
             done
-            
-            COMMENT_BODY+="---\n"
-            COMMENT_BODY+="*Este comentário foi gerado automaticamente pela validação de templates.*"
           fi
 
           # --- Saída da validação ---
