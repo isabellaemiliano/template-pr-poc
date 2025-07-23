@@ -21,25 +21,32 @@ jobs:
           VALIDATION_STATUS="success"
           ERROR_MESSAGES=""
 
+          echo "Conteúdo do PR_BODY para depuração:"
+          echo "$PR_BODY"
+          echo "--- Fim do PR_BODY ---"
+
           # --- Lógica para identificar qual template foi usado ---
+          # Removi os ':' e '#### **' na verificação para maior flexibilidade
           # Verifica se é o template de incidente (:beetle:)
           if echo "$PR_BODY" | grep -q ":beetle: Título da demanda"; then
             echo "Template de Incidente detectado."
             TEMPLATE_TYPE="incidente"
+            # Ajustado para corresponder à formatação exata dos títulos no corpo do PR
             REQUIRED_SECTIONS=(
-              ":fire: Resumo do incidente:"
-              ":hammer_and_wrench: Causa Raiz:"
-              ":wrench: Correção Realizada:"
-              ":mechanic: Evidências de testes local:"
+              "**:fire: Resumo do incidente**"
+              "**:hammer_and_wrench: Causa Raiz**"
+              "**:wrench: Correção Realizada**"
+              "**:mechanic: Evidências de testes local:**" # Esta mantém o ':' se for o caso
             )
           # Verifica se é o template de feature/melhoria (:clipboard:)
           elif echo "$PR_BODY" | grep -q ":clipboard: Título da demanda"; then
             echo "Template de Feature/Melhoria detectado."
             TEMPLATE_TYPE="feature"
+            # Ajustado para corresponder à formatação exata dos títulos no corpo do PR
             REQUIRED_SECTIONS=(
-              ":rocket: Visão Geral:"
-              ":sparkles: Mudanças Implementadas:"
-              ":mechanic: Evidências de testes local:"
+              "#### **:rocket: Visão Geral**"
+              "#### **:sparkles: Mudanças Implementadas**"
+              "**:mechanic: Evidências de testes local:**" # Esta mantém o ':' se for o caso
             )
           else
             echo "Nenhum template reconhecido. Por favor, utilize um dos templates padrão."
@@ -50,10 +57,17 @@ jobs:
           # --- Lógica para validar se as seções obrigatórias estão preenchidas ---
           if [ "$VALIDATION_STATUS" = "success" ]; then
             for SECTION in "${REQUIRED_SECTIONS[@]}"; do
+              # Escapa caracteres especiais para o grep/awk
+              ESCAPED_SECTION=$(echo "$SECTION" | sed 's/[][\/.^$*+?(){}|-]/\\&/g')
+
               # Pega o texto entre a seção atual e a próxima seção ou o final do PR
-              # Nota: Isso é uma forma básica de parser. Para cenários mais complexos,
-              # considerar uma ferramenta de parsing de Markdown.
-              SECTION_CONTENT=$(echo "$PR_BODY" | awk "/$SECTION/,/^:/{print}" | sed "1d" | sed "/^:/{q}" | sed '$d' | tr -d '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+              # A regex foi ajustada para ser mais flexível, procurando pelo título da seção
+              # e capturando tudo até o próximo título de seção que comece com '**:', '#### **:' ou '**:''
+              # ou o fim do corpo do PR.
+              SECTION_CONTENT=$(echo "$PR_BODY" | awk "/$ESCAPED_SECTION/{flag=1;next} /^(\*\*|####)\s*:[a-zA-Z0-9_]+:\s+|^>/{flag=0} flag" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr -d '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+
+              echo "Verificando seção: '$SECTION'"
+              echo "Conteúdo encontrado para '$SECTION': '$SECTION_CONTENT'"
 
               if [ -z "$SECTION_CONTENT" ] || [[ "$SECTION_CONTENT" =~ ^[[:space:]]*lorem ipsum dolor sit amet consectetur adipisicing elit[[:space:]]*$ ]]; then
                 echo "Seção '$SECTION' está vazia ou contém placeholder."
