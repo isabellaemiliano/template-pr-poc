@@ -1,235 +1,75 @@
-name: Validação de Template de PR
+name: Valida Template do PR
 
 on:
   pull_request:
-    types: [opened, edited, synchronize]
-  workflow_dispatch:
-
-permissions:
-  pull-requests: write
-  contents: read
-  issues: write
+    types:
+      - opened
+      - reopened
+      - edited
+      - synchronize # Executa quando novas mudanças são enviadas para o PR
 
 jobs:
-  validate-pr-template:
+  validate_pr_template:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout do código
         uses: actions/checkout@v4
 
-      - name: Validate PR Template
-        id: validate-template
+      - name: Validar Template do PR
         run: |
           PR_BODY="${{ github.event.pull_request.body }}"
-          
-          echo "=== VALIDAÇÃO DO TEMPLATE ==="
-          echo "Tamanho do corpo: ${#PR_BODY} caracteres"
-          echo "Primeiros 200 caracteres do corpo:"
-          echo "$PR_BODY" | head -c 200
-          echo ""
-          echo "Últimos 200 caracteres do corpo:"
-          echo "$PR_BODY" | tail -c 200
-          echo ""
-          
-          # Verificar se o corpo não está vazio
-          if [ -z "$PR_BODY" ]; then
-            echo "❌ Corpo do PR está vazio"
-            exit 1
-          fi
-          
-          # Detectar tipo de template
-          if echo "$PR_BODY" | grep -q ":clipboard:" && echo "$PR_BODY" | grep -q ":rocket: Visão Geral"; then
+          VALIDATION_STATUS="success"
+          ERROR_MESSAGES=""
+
+          # --- Lógica para identificar qual template foi usado ---
+          # Verifica se é o template de incidente (:beetle:)
+          if echo "$PR_BODY" | grep -q ":beetle: Título da demanda"; then
+            echo "Template de Incidente detectado."
+            TEMPLATE_TYPE="incidente"
+            REQUIRED_SECTIONS=(
+              ":fire: Resumo do incidente:"
+              ":hammer_and_wrench: Causa Raiz:"
+              ":wrench: Correção Realizada:"
+              ":mechanic: Evidências de testes local:"
+            )
+          # Verifica se é o template de feature/melhoria (:clipboard:)
+          elif echo "$PR_BODY" | grep -q ":clipboard: Título da demanda"; then
+            echo "Template de Feature/Melhoria detectado."
             TEMPLATE_TYPE="feature"
-            echo "✅ Template detectado: feature"
-          elif echo "$PR_BODY" | grep -q ":beetle:" && echo "$PR_BODY" | grep -q ":fire: Resumo do incidente"; then
-            TEMPLATE_TYPE="bug"
-            echo "✅ Template detectado: bug"
-          else
-            echo "❌ Template não reconhecido"
-            echo "Conteúdo encontrado:"
-            echo "$PR_BODY" | head -c 500
-            echo ""
-            echo "Verificando padrões encontrados:"
-            echo "Clipboard encontrado: $(echo "$PR_BODY" | grep -c ":clipboard:" || echo "0")"
-            echo "Rocket encontrado: $(echo "$PR_BODY" | grep -c ":rocket:" || echo "0")"
-            echo "Beetle encontrado: $(echo "$PR_BODY" | grep -c ":beetle:" || echo "0")"
-            echo "Fire encontrado: $(echo "$PR_BODY" | grep -c ":fire:" || echo "0")"
-            exit 1
-          fi
-          
-          # Verificar se o título da demanda está preenchido
-          if [ "$TEMPLATE_TYPE" = "feature" ]; then
-            TITLE_SECTION=$(echo "$PR_BODY" | sed -n '/^# \*\*:clipboard: Título da demanda\*\*$/,/^- :zombie:/p' | head -n 1)
-            if echo "$TITLE_SECTION" | grep -q "Título da demanda$" || echo "$TITLE_SECTION" | grep -q "^# \*\*:clipboard: Título da demanda\*\*$"; then
-              echo "❌ Título da demanda não está preenchido"
-              exit 1
-            fi
-          else
-            TITLE_SECTION=$(echo "$PR_BODY" | sed -n '/^# \*\*:beetle: Título da demanda\*\*$/,/^- :zombie:/p' | head -n 1)
-            if echo "$TITLE_SECTION" | grep -q "Título da demanda$" || echo "$TITLE_SECTION" | grep -q "^# \*\*:beetle: Título da demanda\*\*$"; then
-              echo "❌ Título da demanda não está preenchido"
-              exit 1
-            fi
-          fi
-          echo "✅ Título da demanda está preenchido"
-          
-          # Verificar valores padrão em todo o corpo
-          if echo "$PR_BODY" | grep -i -q "lorem ipsum"; then
-            echo "❌ Encontrado 'lorem ipsum' no corpo"
-            exit 1
-          fi
-          
-          if echo "$PR_BODY" | grep -q "MK-XXXX"; then
-            echo "❌ Encontrado 'MK-XXXX' no corpo"
-            exit 1
-          fi
-          
-          if echo "$PR_BODY" | grep -q "MK-0000"; then
-            echo "❌ Encontrado 'MK-0000' no corpo"
-            exit 1
-          fi
-          
-          # Verificar se as seções obrigatórias estão preenchidas (excluindo observações e demandas relacionadas)
-          if [ "$TEMPLATE_TYPE" = "feature" ]; then
-            # Para feature: verificar Visão Geral, Mudanças Implementadas e Evidências de testes
-            SECTIONS_TO_CHECK=(
-              ":rocket: Visão Geral"
-              ":sparkles: Mudanças Implementadas"
-              ":mechanic: Evidências de testes local"
+            REQUIRED_SECTIONS=(
+              ":rocket: Visão Geral:"
+              ":sparkles: Mudanças Implementadas:"
+              ":mechanic: Evidências de testes local:"
             )
           else
-            # Para bug: verificar Resumo do incidente, Causa Raiz, Correção Realizada e Evidências de testes
-            SECTIONS_TO_CHECK=(
-              ":fire: Resumo do incidente"
-              ":hammer_and_wrench: Causa Raiz"
-              ":wrench: Correção Realizada"
-              ":mechanic: Evidências de testes local"
-            )
+            echo "Nenhum template reconhecido. Por favor, utilize um dos templates padrão."
+            VALIDATION_STATUS="failure"
+            ERROR_MESSAGES+="* Nenhum template de PR reconhecido. Por favor, use o template de Incidente ou de Feature/Melhoria.\n"
           fi
-          
-          # Verificar se cada seção obrigatória está preenchida
-          for section in "${SECTIONS_TO_CHECK[@]}"; do
-            echo "Verificando seção: $section"
-            
-            # Extrair o conteúdo da seção (até a próxima seção ou fim)
-            if [ "$TEMPLATE_TYPE" = "feature" ]; then
-              if [ "$section" = ":rocket: Visão Geral" ]; then
-                # Extrair conteúdo entre "**:rocket: Visão Geral:**" e "**:sparkles: Mudanças Implementadas:**"
-                SECTION_CONTENT=$(echo "$PR_BODY" | awk '/^\*\*:rocket: Visão Geral:\*\*$/,/^\*\*:sparkles: Mudanças Implementadas:\*\*$/' | tail -n +2 | head -n -1)
-              elif [ "$section" = ":sparkles: Mudanças Implementadas" ]; then
-                # Extrair conteúdo entre "**:sparkles: Mudanças Implementadas:**" e "**:mechanic: Evidências de testes local:**"
-                SECTION_CONTENT=$(echo "$PR_BODY" | awk '/^\*\*:sparkles: Mudanças Implementadas:\*\*$/,/^\*\*:mechanic: Evidências de testes local:\*\*$/' | tail -n +2 | head -n -1)
-              elif [ "$section" = ":mechanic: Evidências de testes local" ]; then
-                # Extrair conteúdo entre "**:mechanic: Evidências de testes local:**" e "<hr />"
-                SECTION_CONTENT=$(echo "$PR_BODY" | awk '/^\*\*:mechanic: Evidências de testes local:\*\*$/,/^<hr \/>$/' | tail -n +2 | head -n -1)
-              fi
-            else
-              if [ "$section" = ":fire: Resumo do incidente" ]; then
-                SECTION_CONTENT=$(echo "$PR_BODY" | awk '/^\*\*:fire: Resumo do incidente:\*\*$/,/^\*\*:hammer_and_wrench: Causa Raiz:\*\*$/' | tail -n +2 | head -n -1)
-              elif [ "$section" = ":hammer_and_wrench: Causa Raiz" ]; then
-                SECTION_CONTENT=$(echo "$PR_BODY" | awk '/^\*\*:hammer_and_wrench: Causa Raiz:\*\*$/,/^\*\*:wrench: Correção Realizada:\*\*$/' | tail -n +2 | head -n -1)
-              elif [ "$section" = ":wrench: Correção Realizada" ]; then
-                SECTION_CONTENT=$(echo "$PR_BODY" | awk '/^\*\*:wrench: Correção Realizada:\*\*$/,/^\*\*:mechanic: Evidências de testes local:\*\*$/' | tail -n +2 | head -n -1)
-              elif [ "$section" = ":mechanic: Evidências de testes local" ]; then
-                SECTION_CONTENT=$(echo "$PR_BODY" | awk '/^\*\*:mechanic: Evidências de testes local:\*\*$/,/^<hr \/>$/' | tail -n +2 | head -n -1)
-              fi
-            fi
-            
-            # Debug: mostrar o conteúdo extraído
-            echo "Conteúdo extraído para '$section':"
-            echo "--- INÍCIO DO CONTEÚDO ---"
-            echo "$SECTION_CONTENT"
-            echo "--- FIM DO CONTEÚDO ---"
-            
-            # Remover apenas linhas vazias e verificar se há conteúdo
-            SECTION_CONTENT_CLEAN=$(echo "$SECTION_CONTENT" | grep -v '^[[:space:]]*$' | tr -s '[:space:]' ' ' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-            
-            echo "Conteúdo limpo: '$SECTION_CONTENT_CLEAN'"
-            echo "Tamanho do conteúdo limpo: ${#SECTION_CONTENT_CLEAN}"
-            
-            if [ -z "$SECTION_CONTENT_CLEAN" ]; then
-              echo "❌ Seção '$section' está vazia ou não preenchida"
-              exit 1
-            fi
-            
-            echo "✅ Seção '$section' está preenchida"
-          done
-          
-          echo "✅ Template validado com sucesso!"
-          echo "✅ Todos os campos obrigatórios estão preenchidos"
-          echo "✅ Nenhum valor padrão foi encontrado"
 
-      - name: Comment on PR
-        if: failure()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            try {
-              await github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: `## ❌ Validação do Template Falhou
-            
-            O template do seu PR não passou na validação. Por favor, verifique:
-            
-            ### 🔍 Problemas encontrados:
-            - Certifique-se de que o **título da demanda** está preenchido (não deixe apenas "Título da demanda")
-            - Preencha todas as seções obrigatórias com informações reais
-            - Remova todos os valores padrão (lorem ipsum, MK-XXXX, MK-0000)
-            
-            ### 📋 Campos obrigatórios:
-            **Para Features:**
-            - ✅ Título da demanda (preenchido)
-            - ✅ Devs responsáveis
-            - ✅ Link da demanda
-            - ✅ Visão Geral (com conteúdo real)
-            - ✅ Mudanças Implementadas (com conteúdo real)
-            - ✅ Evidências de testes local (com conteúdo real)
-            
-            **Para Bugs:**
-            - ✅ Título da demanda (preenchido)
-            - ✅ Devs responsáveis
-            - ✅ Link da demanda
-            - ✅ Resumo do incidente (com conteúdo real)
-            - ✅ Causa Raiz (com conteúdo real)
-            - ✅ Correção Realizada (com conteúdo real)
-            - ✅ Evidências de testes local (com conteúdo real)
-            
-            ### ℹ️ Campos opcionais (não são validados):
-            - Observações
-            - Demandas relacionadas
-            
-            ### 💡 Dica:
-            Use um dos templates disponíveis em .github/pull_request_templates/ e preencha com informações reais sobre sua mudança!`
-              });
-              console.log('✅ Comentário de erro adicionado com sucesso');
-            } catch (error) {
-              console.error('❌ Erro ao adicionar comentário:', error.message);
-              console.log('Continuando sem adicionar comentário...');
-            }
+          # --- Lógica para validar se as seções obrigatórias estão preenchidas ---
+          if [ "$VALIDATION_STATUS" = "success" ]; then
+            for SECTION in "${REQUIRED_SECTIONS[@]}"; do
+              # Pega o texto entre a seção atual e a próxima seção ou o final do PR
+              # Nota: Isso é uma forma básica de parser. Para cenários mais complexos,
+              # considerar uma ferramenta de parsing de Markdown.
+              SECTION_CONTENT=$(echo "$PR_BODY" | awk "/$SECTION/,/^:/{print}" | sed "1d" | sed "/^:/{q}" | sed '$d' | tr -d '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
 
-      - name: Success Comment
-        if: success()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            try {
-              await github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: `## ✅ Template Validado com Sucesso!
-            
-            Seu PR passou na validação do template! Todos os campos obrigatórios estão preenchidos corretamente. 🎉
-            
-            ### ✅ Validações aprovadas:
-            - Título da demanda preenchido
-            - Seções obrigatórias com conteúdo real
-            - Nenhum valor padrão encontrado`
-              });
-              console.log('✅ Comentário de sucesso adicionado');
-            } catch (error) {
-              console.error('❌ Erro ao adicionar comentário de sucesso:', error.message);
-              console.log('Continuando sem adicionar comentário...');
-            }
+              if [ -z "$SECTION_CONTENT" ] || [[ "$SECTION_CONTENT" =~ ^[[:space:]]*lorem ipsum dolor sit amet consectetur adipisicing elit[[:space:]]*$ ]]; then
+                echo "Seção '$SECTION' está vazia ou contém placeholder."
+                VALIDATION_STATUS="failure"
+                ERROR_MESSAGES+="* A seção **${SECTION}** está vazia ou ainda contém o texto de placeholder.\n"
+              fi
+            done
+          fi
+
+          # --- Saída da validação ---
+          if [ "$VALIDATION_STATUS" = "failure" ]; then
+            echo "::error::Validação do Template do PR Falhou!"
+            echo -e "::set-output name=validation_result::failure"
+            echo -e "::set-output name=error_message::${ERROR_MESSAGES}"
+            exit 1 # Falha a Action se a validação falhar
+          else
+            echo "::notice::Validação do Template do PR bem-sucedida!"
+            echo -e "::set-output name=validation_result::success"
+          fi
