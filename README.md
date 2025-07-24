@@ -78,4 +78,3 @@ A action está configurada para rodar em:
 1. Crie um novo Pull Request
 2. Selecione um dos templates disponíveis
 3. Preencha todos os campos obrigatórios com informações reais
-4. A action validará automaticamente e comentará no PR
