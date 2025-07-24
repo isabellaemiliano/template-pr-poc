@@ -87,8 +87,14 @@ jobs:
                   # Para quando encontra uma nova seção (#### ou **:)
                   if ($0 ~ /^####/ || $0 ~ /^\*\*:/) exit
                   
+                  # Para quando encontra um blockquote que pode indicar fim da seção
+                  if ($0 ~ /^>/) exit
+                  
                   # Remove espaços em branco no início e fim
                   gsub(/^[[:space:]]+|[[:space:]]+$/, "")
+                  
+                  # Ignora elementos HTML de divisão como <hr />
+                  if ($0 ~ /^<hr[^>]*\/?>$/) next
                   
                   # Se a linha não está vazia, adiciona ao conteúdo
                   if ($0 != "") {
@@ -104,6 +110,12 @@ jobs:
               # Verifica se o conteúdo está vazio ou contém o placeholder
               # Remove quebras de linha e espaços para verificar se há conteúdo real
               CLEAN_CONTENT=$(echo "$SECTION_CONTENT" | tr '\n' ' ' | sed 's/[[:space:]]\+/ /g' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+              
+              # Remove elementos HTML de divisão e outros elementos não relevantes
+              CLEAN_CONTENT=$(echo "$CLEAN_CONTENT" | sed 's/<hr[^>]*\/?>//g' | sed 's/<hr[^>]*>.*<\/hr>//g')
+              
+              # Remove observações e comentários que não são conteúdo real
+              CLEAN_CONTENT=$(echo "$CLEAN_CONTENT" | sed 's/⛔ Observações://g' | sed 's/Blá blá blá//g')
               
               # Verifica se há mídia (imagens ou vídeos) no conteúdo
               HAS_MEDIA=false
