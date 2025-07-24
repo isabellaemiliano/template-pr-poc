@@ -8,7 +8,6 @@ Este repositório contém uma GitHub Action que valida automaticamente os templa
 - **Validação de campos obrigatórios** específicos para cada tipo
 - **Rejeição de valores padrão** (lorem ipsum, MK-XXXX, etc.)
 - **Campos opcionais** permitidos vazios (Observações e Demandas relacionadas)
-- **Comentários automáticos** no PR com feedback detalhado
 
 ## 📋 Templates Suportados
 
@@ -45,7 +44,6 @@ A action é executada automaticamente quando:
 1. **Detecção do Template**: A action identifica automaticamente se é um template de feature ou bug
 2. **Verificação de Campos**: Valida se todos os campos obrigatórios estão presentes
 3. **Análise de Conteúdo**: Verifica se os campos têm conteúdo real (não valores padrão)
-4. **Feedback**: Comenta no PR com o resultado da validação
 
 ### Valores Rejeitados
 
@@ -80,25 +78,4 @@ A action está configurada para rodar em:
 1. Crie um novo Pull Request
 2. Selecione um dos templates disponíveis
 3. Preencha todos os campos obrigatórios com informações reais
-4. A action validará automaticamente e comentará no PR
-
-## ✅ Resultados Esperados
-
-### Sucesso
-```
-## ✅ Template Validado com Sucesso!
-
-Seu PR passou na validação do template! Todos os campos obrigatórios estão preenchidos corretamente. 🎉
-```
-
-### Falha
-```
-## ❌ Validação do Template Falhou
-
-O template do seu PR não passou na validação. Por favor, verifique:
-
-### 🔍 Problemas encontrados:
-- Certifique-se de que todos os campos obrigatórios estão preenchidos
-- Remova todos os valores padrão (lorem ipsum, MK-XXXX, etc.)
-- Preencha com informações reais sobre sua mudança
-```
+4. A action validará o PR, caso ele esteja de acordo, poderá ser realizado o merge
